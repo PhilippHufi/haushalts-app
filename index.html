@@ -374,11 +374,34 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js')
                     .then((registration) => {
-                        console.log('SW registered: ', registration);
+                        console.log('Service Worker registriert:', registration);
+                        
+                        // Update-Check
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        // Neue Version verfügbar
+                                        console.log('Neue App-Version verfügbar!');
+                                        if (window.app) {
+                                            window.app.showNotification('🔄 Neue Version verfügbar! App wird aktualisiert...', 'info');
+                                        }
+                                        // Automatisch aktualisieren
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                    }
+                                }
+                            });
+                        });
                     })
                     .catch((registrationError) => {
-                        console.log('SW registration failed: ', registrationError);
+                        console.log('Service Worker Registrierung fehlgeschlagen:', registrationError);
                     });
+            });
+            
+            // Seite neu laden wenn Service Worker übernommen hat
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                window.location.reload();
             });
         }
     </script>
