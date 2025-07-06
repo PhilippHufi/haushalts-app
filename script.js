@@ -213,6 +213,12 @@ class BookkeepingApp {
             return;
         }
 
+        // Prüfen ob wir im Bearbeitungsmodus sind
+        if (this.editingTransactionId) {
+            this.updateTransaction();
+            return;
+        }
+
         this.transactions.push({
             id: Date.now(),
             date,
@@ -328,14 +334,21 @@ class BookkeepingApp {
         const tbody = document.getElementById('transactions-tbody');
         tbody.innerHTML = '';
 
-        this.transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(transaction => {
+        this.transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((transaction, index) => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${new Date(transaction.date).toLocaleDateString('de-DE')}</td>
-                <td>${transaction.description}</td>
+                <td>
+                    ${transaction.description}
+                    ${transaction.notes ? `<br><small class="notes">📝 ${transaction.notes}</small>` : ''}
+                </td>
                 <td>${transaction.debitAccount}</td>
                 <td>${transaction.creditAccount}</td>
                 <td>€${transaction.amount.toFixed(2)}</td>
+                <td class="transaction-actions">
+                    <button class="edit-btn" onclick="app.editTransaction(${transaction.id})" title="Bearbeiten">✏️</button>
+                    <button class="delete-btn" onclick="app.deleteTransaction(${transaction.id})" title="Löschen">🗑️</button>
+                </td>
             `;
             tbody.appendChild(row);
         });
@@ -765,6 +778,101 @@ class BookkeepingApp {
         this.saveData();
         
         this.showNotification('🗑️ Beleg wurde gelöscht', 'success');
+    }
+    
+    editTransaction(transactionId) {
+        const transaction = this.transactions.find(t => t.id === transactionId);
+        if (!transaction) return;
+        
+        // Tab wechseln zu Transaktionen
+        showTab('transactions');
+        document.querySelector('[onclick="showTab(\'transactions\')"]').classList.add('active');
+        
+        // Formular mit Daten füllen
+        document.getElementById('date').value = transaction.date;
+        document.getElementById('description').value = transaction.description;
+        document.getElementById('notes').value = transaction.notes || '';
+        document.getElementById('debit-account').value = transaction.debitAccount;
+        document.getElementById('credit-account').value = transaction.creditAccount;
+        document.getElementById('amount').value = transaction.amount;
+        
+        // Button ändern
+        const submitButton = document.querySelector('#transaction-form button[type="submit"]');
+        submitButton.textContent = 'Transaktion aktualisieren';
+        
+        // Bearbeitungsmodus aktivieren
+        this.editingTransactionId = transactionId;
+        
+        // Form Submit Handler temporär ändern
+        const form = document.getElementById('transaction-form');
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            this.updateTransaction();
+        };
+        
+        this.showNotification('📝 Transaktion wird bearbeitet', 'info');
+    }
+    
+    updateTransaction() {
+        const transaction = this.transactions.find(t => t.id === this.editingTransactionId);
+        if (!transaction) return;
+        
+        // Daten aktualisieren
+        transaction.date = document.getElementById('date').value;
+        transaction.description = document.getElementById('description').value;
+        transaction.notes = document.getElementById('notes').value;
+        transaction.debitAccount = document.getElementById('debit-account').value;
+        transaction.creditAccount = document.getElementById('credit-account').value;
+        transaction.amount = parseFloat(document.getElementById('amount').value);
+        
+        // UI aktualisieren
+        this.renderTransactions();
+        this.renderBalance();
+        this.updateCalendarView();
+        this.updateDashboard();
+        this.saveData();
+        
+        // Formular zurücksetzen
+        document.getElementById('transaction-form').reset();
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+        
+        // Button zurücksetzen
+        const submitButton = document.querySelector('#transaction-form button[type="submit"]');
+        submitButton.textContent = 'Transaktion hinzufügen';
+        
+        // Form Submit Handler zurücksetzen
+        const form = document.getElementById('transaction-form');
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            this.addTransaction();
+        };
+        
+        delete this.editingTransactionId;
+        
+        this.showNotification('✅ Transaktion wurde aktualisiert!', 'success');
+    }
+    
+    deleteTransaction(transactionId) {
+        if (!confirm('Möchten Sie diese Transaktion wirklich löschen?')) return;
+        
+        // Transaktion entfernen
+        this.transactions = this.transactions.filter(t => t.id !== transactionId);
+        
+        // Prüfen ob es eine Beleg-Transaktion war
+        const receipt = this.receipts.find(r => r.transactionId === transactionId);
+        if (receipt) {
+            receipt.transactionId = null;
+            receipt.processed = false;
+        }
+        
+        // UI aktualisieren
+        this.renderTransactions();
+        this.renderBalance();
+        this.updateCalendarView();
+        this.updateDashboard();
+        this.saveData();
+        
+        this.showNotification('🗑️ Transaktion wurde gelöscht', 'success');
     }
     
     showNotification(message, type = 'info') {

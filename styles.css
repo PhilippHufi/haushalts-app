@@ -889,6 +889,27 @@ tr:hover {
     animation: slideIn 0.4s ease-out;
 }
 
+/* Transaction Actions */
+.transaction-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.transaction-actions button {
+    padding: 4px 8px;
+    font-size: 14px;
+}
+
+/* Notes in transactions */
+.notes {
+    font-size: 0.85em;
+    color: #666;
+    font-style: italic;
+    display: block;
+    margin-top: 2px;
+}
+
 /* Hover Effekte für bessere Interaktivität */
 input:hover, select:hover, textarea:hover {
     border-color: var(--primary-color);
