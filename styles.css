@@ -774,6 +774,117 @@ tr:hover {
     font-size: 1.1em;
 }
 
+/* Manual Receipt Entry Styles */
+#manual-items-entry {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+}
+
+#manual-items-entry h5 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.receipt-item-input {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.receipt-item-input .item-name {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.receipt-item-input .item-price {
+    width: 100px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.receipt-item-input .remove-item-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    transition: all 0.3s ease;
+}
+
+.receipt-item-input .remove-item-btn:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+.add-item-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.3s ease;
+}
+
+.add-item-btn:hover {
+    background: #218838;
+}
+
+.info-text {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+/* Receipt Actions */
+.receipt-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.edit-btn, .delete-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.edit-btn:hover {
+    background: #6366f1;
+    color: white;
+    border-color: #6366f1;
+}
+
+.delete-btn:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+/* Receipt Notes */
+.notes {
+    font-style: italic;
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
 .transaction-item {
     animation: slideIn 0.4s ease-out;
 }

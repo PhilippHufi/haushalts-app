@@ -523,46 +523,37 @@ class BookkeepingApp {
 
     extractDataFromReceipt(imageData, file) {
         const extractedDataDiv = document.getElementById('extracted-data');
-        extractedDataDiv.innerHTML = '<div class="loading">Beleg wird verarbeitet...</div>';
+        extractedDataDiv.innerHTML = '<div class="loading">Beleg wird analysiert...</div>';
 
         setTimeout(() => {
-            const mockData = this.simulateOCR(file.name, this.currentReceiptType);
-            
-            let itemsHTML = '';
-            if (mockData.items && mockData.items.length > 0) {
-                itemsHTML = `
-                    <h5>Einzelpositionen:</h5>
-                    <div class="receipt-items">
-                        ${mockData.items.map(item => `
-                            <div class="receipt-item">
-                                <span>${item.name}</span>
-                                <span>€${item.price.toFixed(2)}</span>
-                            </div>
-                        `).join('')}
-                        <div class="receipt-total">
-                            <strong>Summe:</strong>
-                            <strong>€${mockData.total}</strong>
-                        </div>
-                    </div>
-                `;
-            }
+            // Für echte OCR würde hier die API aufgerufen werden
+            // Aktuell: Leere Vorlage für manuelle Eingabe
+            const today = new Date().toISOString().split('T')[0];
             
             extractedDataDiv.innerHTML = `
-                <h4>Extrahierte Daten</h4>
-                <p><strong>Typ:</strong> ${this.currentReceiptType === 'kassenbon' ? 'Kassenbon' : 'Rechnung'}</p>
-                <p><strong>Datum:</strong> ${mockData.date}</p>
-                <p><strong>Verkäufer:</strong> ${mockData.vendor}</p>
-                <p><strong>Beschreibung:</strong> ${mockData.description}</p>
-                ${itemsHTML}
-                <p><strong>Gesamtbetrag:</strong> €${mockData.amount}</p>
-                <p><strong>Kategorie:</strong> ${mockData.category}</p>
+                <h4>Bitte Daten manuell eingeben</h4>
+                <p class="info-text">Die automatische Texterkennung ist noch in Entwicklung. 
+                Bitte geben Sie die Daten vom Kassenbon manuell ein.</p>
+                
+                <div id="manual-items-entry">
+                    <h5>Einzelpositionen:</h5>
+                    <div id="receipt-items-list"></div>
+                    <button type="button" class="add-item-btn" onclick="app.addReceiptItem()">
+                        + Position hinzufügen
+                    </button>
+                    <div class="receipt-total">
+                        <strong>Summe:</strong>
+                        <strong id="items-total">€0.00</strong>
+                    </div>
+                </div>
             `;
 
-            document.getElementById('receipt-date').value = mockData.date;
-            document.getElementById('receipt-description').value = mockData.description;
-            document.getElementById('receipt-amount').value = mockData.amount;
-            document.getElementById('receipt-category').value = mockData.category;
-            document.getElementById('receipt-vendor').value = mockData.vendor;
+            // Standard-Werte setzen
+            document.getElementById('receipt-date').value = today;
+            document.getElementById('receipt-description').value = '';
+            document.getElementById('receipt-amount').value = '';
+            document.getElementById('receipt-category').value = '';
+            document.getElementById('receipt-vendor').value = '';
             
             document.getElementById('receipt-transaction-form').style.display = 'block';
             
@@ -570,89 +561,53 @@ class BookkeepingApp {
                 id: Date.now(),
                 imageData: imageData,
                 fileName: file.name,
-                extractedData: mockData,
+                items: [],
                 receiptType: this.currentReceiptType,
                 processed: false
             };
-        }, 2000);
+            
+            // Erste leere Position hinzufügen
+            this.addReceiptItem();
+        }, 1000);
     }
-
-    simulateOCR(fileName, receiptType) {
-        const today = new Date();
-        const dateStr = today.toISOString().split('T')[0];
+    
+    addReceiptItem() {
+        const itemsList = document.getElementById('receipt-items-list');
+        const itemId = Date.now();
         
-        if (receiptType === 'kassenbon') {
-            // Simuliere realistische Kassenbon-Daten mit Einzelpositionen
-            const kassenbonExamples = [
-                {
-                    date: dateStr,
-                    vendor: 'REWE',
-                    items: [
-                        { name: 'Milch 1L', price: 1.29 },
-                        { name: 'Brot', price: 2.45 },
-                        { name: 'Käse 200g', price: 3.49 },
-                        { name: 'Tomaten 500g', price: 2.99 },
-                        { name: 'Apfel 1kg', price: 2.49 },
-                        { name: 'Butter', price: 2.89 },
-                        { name: 'Eier 10 Stück', price: 2.29 },
-                        { name: 'Joghurt 4er Pack', price: 1.99 },
-                        { name: 'Wasser 6x1,5L', price: 2.49 }
-                    ],
-                    category: 'Essen'
-                },
-                {
-                    date: dateStr,
-                    vendor: 'DM Drogerie',
-                    items: [
-                        { name: 'Shampoo', price: 3.95 },
-                        { name: 'Zahnpasta', price: 2.45 },
-                        { name: 'Deo', price: 2.99 },
-                        { name: 'Duschgel', price: 1.95 },
-                        { name: 'Waschmittel', price: 7.99 }
-                    ],
-                    category: 'Haushalt'
-                },
-                {
-                    date: dateStr,
-                    vendor: 'ALDI',
-                    items: [
-                        { name: 'Hackfleisch 500g', price: 3.99 },
-                        { name: 'Nudeln 500g', price: 0.89 },
-                        { name: 'Passata', price: 0.79 },
-                        { name: 'Parmesan', price: 2.49 },
-                        { name: 'Basilikum frisch', price: 1.29 },
-                        { name: 'Olivenöl', price: 4.99 },
-                        { name: 'Knoblauch', price: 0.99 }
-                    ],
-                    category: 'Essen'
-                }
-            ];
-            
-            const selectedReceipt = kassenbonExamples[Math.floor(Math.random() * kassenbonExamples.length)];
-            const totalAmount = selectedReceipt.items.reduce((sum, item) => sum + item.price, 0);
-            
-            return {
-                date: selectedReceipt.date,
-                vendor: selectedReceipt.vendor,
-                description: `Einkauf bei ${selectedReceipt.vendor}`,
-                amount: totalAmount.toFixed(2),
-                category: selectedReceipt.category,
-                items: selectedReceipt.items,
-                total: totalAmount.toFixed(2)
-            };
-        } else {
-            // Rechnungsdaten bleiben gleich
-            const rechnungData = [
-                { date: dateStr, vendor: 'Staples Deutschland GmbH', description: 'Büromaterial Bestellung', amount: '145.67', category: 'Büroaufwand' },
-                { date: dateStr, vendor: 'Deutsche Telekom AG', description: 'Internetrechnung', amount: '59.99', category: 'Büroaufwand' },
-                { date: dateStr, vendor: 'Restaurant Adler', description: 'Geschäftsessen', amount: '125.50', category: 'Bewirtung' },
-                { date: dateStr, vendor: 'IKEA Deutschland GmbH', description: 'Büroausstattung', amount: '299.99', category: 'Büroaufwand' },
-                { date: dateStr, vendor: 'Aral Station', description: 'Tankrechnung', amount: '78.45', category: 'Reisekosten' }
-            ];
-            
-            return rechnungData[Math.floor(Math.random() * rechnungData.length)];
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'receipt-item-input';
+        itemDiv.id = `item-${itemId}`;
+        itemDiv.innerHTML = `
+            <input type="text" placeholder="Artikel" class="item-name" onchange="app.updateItemsTotal()">
+            <input type="number" placeholder="Preis" step="0.01" class="item-price" onchange="app.updateItemsTotal()">
+            <button type="button" class="remove-item-btn" onclick="app.removeReceiptItem(${itemId})">×</button>
+        `;
+        
+        itemsList.appendChild(itemDiv);
+    }
+    
+    removeReceiptItem(itemId) {
+        const item = document.getElementById(`item-${itemId}`);
+        if (item) {
+            item.remove();
+            this.updateItemsTotal();
         }
     }
+    
+    updateItemsTotal() {
+        const priceInputs = document.querySelectorAll('.item-price');
+        let total = 0;
+        
+        priceInputs.forEach(input => {
+            const value = parseFloat(input.value) || 0;
+            total += value;
+        });
+        
+        document.getElementById('items-total').textContent = `€${total.toFixed(2)}`;
+        document.getElementById('receipt-amount').value = total.toFixed(2);
+    }
+
 
     createTransactionFromReceipt() {
         const date = document.getElementById('receipt-date').value;
@@ -662,21 +617,63 @@ class BookkeepingApp {
         const vendor = document.getElementById('receipt-vendor').value;
         const notes = document.getElementById('receipt-notes').value;
 
-        this.transactions.push({
-            id: Date.now(),
-            date,
-            description,
-            debitAccount: category,
-            creditAccount: 'Bank',
-            amount,
-            vendor,
-            notes,
-            receiptType: this.currentReceiptType
-        });
+        if (this.editingReceiptIndex !== undefined) {
+            // Bearbeitungsmodus - bestehenden Beleg aktualisieren
+            const receipt = this.receipts[this.editingReceiptIndex];
+            receipt.extractedData = {
+                date,
+                description,
+                amount,
+                category,
+                vendor,
+                notes
+            };
+            
+            // Zugehörige Transaktion auch aktualisieren
+            if (receipt.transactionId) {
+                const transaction = this.transactions.find(t => t.id === receipt.transactionId);
+                if (transaction) {
+                    transaction.date = date;
+                    transaction.description = description;
+                    transaction.amount = amount;
+                    transaction.debitAccount = category;
+                    transaction.vendor = vendor;
+                    transaction.notes = notes;
+                }
+            }
+            
+            this.showNotification('✅ Beleg wurde aktualisiert!', 'success');
+            delete this.editingReceiptIndex;
+        } else {
+            // Neuer Beleg
+            const transactionId = Date.now();
+            
+            this.transactions.push({
+                id: transactionId,
+                date,
+                description,
+                debitAccount: category,
+                creditAccount: 'Bank',
+                amount,
+                vendor,
+                notes,
+                receiptType: this.currentReceiptType
+            });
 
-        this.currentReceiptData.processed = true;
-        this.currentReceiptData.transactionId = this.transactions[this.transactions.length - 1].id;
-        this.receipts.push(this.currentReceiptData);
+            this.currentReceiptData.processed = true;
+            this.currentReceiptData.transactionId = transactionId;
+            this.currentReceiptData.extractedData = {
+                date,
+                description,
+                amount,
+                category,
+                vendor,
+                notes
+            };
+            this.receipts.push(this.currentReceiptData);
+            
+            this.showNotification('✅ Beleg gespeichert und Transaktion erstellt!', 'success');
+        }
 
         this.renderTransactions();
         this.renderBalance();
@@ -685,33 +682,91 @@ class BookkeepingApp {
         this.updateDashboard();
         this.saveData();
 
+        // Formular zurücksetzen
         document.getElementById('receipt-form').reset();
         document.getElementById('receipt-preview').style.display = 'none';
         document.getElementById('receipt-transaction-form').style.display = 'none';
-        
-        this.showNotification('✅ Beleg gespeichert und Transaktion erstellt!', 'success');
+        document.querySelector('#receipt-to-transaction-form button[type="submit"]').textContent = 'Transaktion erstellen';
     }
 
     renderReceipts() {
         const gallery = document.getElementById('receipts-gallery');
         gallery.innerHTML = '';
 
-        this.receipts.forEach(receipt => {
+        this.receipts.forEach((receipt, index) => {
             const receiptItem = document.createElement('div');
             receiptItem.className = 'receipt-item';
             receiptItem.innerHTML = `
                 <img src="${receipt.imageData}" alt="${receipt.fileName}">
                 <h4>${receipt.extractedData.description}</h4>
-                <p><strong>${receipt.extractedData.vendor}</strong></p>
+                <p><strong>${receipt.extractedData.vendor || 'Unbekannt'}</strong></p>
                 <p>${new Date(receipt.extractedData.date).toLocaleDateString('de-DE')}</p>
                 <p class="amount">€${receipt.extractedData.amount}</p>
                 <p>${receipt.extractedData.category}</p>
+                ${receipt.extractedData.notes ? `<p class="notes">📝 ${receipt.extractedData.notes}</p>` : ''}
                 <p style="font-size: 12px; color: #999;">${receipt.receiptType === 'kassenbon' ? 'Kassenbon' : 'Rechnung'}</p>
+                <div class="receipt-actions">
+                    <button class="edit-btn" onclick="app.editReceipt(${index})" title="Bearbeiten">✏️</button>
+                    <button class="delete-btn" onclick="app.deleteReceipt(${index})" title="Löschen">🗑️</button>
+                </div>
             `;
             gallery.appendChild(receiptItem);
         });
     }
 
+    editReceipt(index) {
+        const receipt = this.receipts[index];
+        if (!receipt) return;
+        
+        // Tab wechseln zu Belege
+        showTab('receipts');
+        document.querySelector('[onclick="showTab(\'receipts\')"]').classList.add('active');
+        
+        // Formular mit Daten füllen
+        document.getElementById('receipt-date').value = receipt.extractedData.date;
+        document.getElementById('receipt-description').value = receipt.extractedData.description;
+        document.getElementById('receipt-vendor').value = receipt.extractedData.vendor || '';
+        document.getElementById('receipt-notes').value = receipt.extractedData.notes || '';
+        document.getElementById('receipt-amount').value = receipt.extractedData.amount;
+        document.getElementById('receipt-category').value = receipt.extractedData.category;
+        
+        // Bild anzeigen
+        document.getElementById('preview-image').src = receipt.imageData;
+        document.getElementById('receipt-preview').style.display = 'block';
+        document.getElementById('receipt-transaction-form').style.display = 'block';
+        
+        // Bearbeitungsmodus aktivieren
+        this.editingReceiptIndex = index;
+        
+        // Button Text ändern
+        const submitButton = document.querySelector('#receipt-to-transaction-form button[type="submit"]');
+        submitButton.textContent = 'Änderungen speichern';
+        
+        // Hinweis anzeigen
+        this.showNotification('📝 Beleg wird bearbeitet', 'info');
+    }
+    
+    deleteReceipt(index) {
+        if (!confirm('Möchten Sie diesen Beleg wirklich löschen?')) return;
+        
+        const receipt = this.receipts[index];
+        
+        // Zugehörige Transaktion auch löschen
+        if (receipt.transactionId) {
+            this.transactions = this.transactions.filter(t => t.id !== receipt.transactionId);
+            this.renderTransactions();
+            this.renderBalance();
+            this.updateDashboard();
+        }
+        
+        // Beleg löschen
+        this.receipts.splice(index, 1);
+        this.renderReceipts();
+        this.saveData();
+        
+        this.showNotification('🗑️ Beleg wurde gelöscht', 'success');
+    }
+    
     showNotification(message, type = 'info') {
         // Moderne Toast-Benachrichtigung
         const notification = document.createElement('div');
