@@ -847,6 +847,24 @@ tr:hover {
     margin-bottom: 15px;
 }
 
+/* OCR Results */
+.ocr-results {
+    background: #e8f5e9;
+    border: 1px solid #4caf50;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.ocr-results p {
+    margin: 8px 0;
+    color: #2e7d32;
+}
+
+.ocr-results .warning {
+    color: #f57c00;
+}
+
 /* Receipt Actions */
 .receipt-actions {
     display: flex;

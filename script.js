@@ -539,19 +539,102 @@ class BookkeepingApp {
         reader.readAsDataURL(file);
     }
 
-    extractDataFromReceipt(imageData, file) {
+    async extractDataFromReceipt(imageData, file) {
         const extractedDataDiv = document.getElementById('extracted-data');
-        extractedDataDiv.innerHTML = '<div class="loading">Beleg wird analysiert...</div>';
+        extractedDataDiv.innerHTML = '<div class="loading">🔍 Beleg wird analysiert... Dies kann einen Moment dauern.</div>';
 
-        setTimeout(() => {
-            // Für echte OCR würde hier die API aufgerufen werden
-            // Aktuell: Leere Vorlage für manuelle Eingabe
+        // Receipt data speichern
+        this.currentReceiptData = {
+            id: Date.now(),
+            imageData: imageData,
+            fileName: file.name,
+            items: [],
+            receiptType: this.currentReceiptType,
+            processed: false
+        };
+
+        try {
+            // OCR mit Tesseract.js
+            const worker = await Tesseract.createWorker('deu');
+            
+            extractedDataDiv.innerHTML = '<div class="loading">📝 Text wird erkannt... (0%)</div>';
+            
+            const { data } = await worker.recognize(imageData, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        const progress = Math.round(m.progress * 100);
+                        extractedDataDiv.innerHTML = `<div class="loading">📝 Text wird erkannt... (${progress}%)</div>`;
+                    }
+                }
+            });
+            
+            await worker.terminate();
+            
+            // Text analysieren
+            const text = data.text;
+            console.log('Erkannter Text:', text);
+            
+            // Daten extrahieren
+            const extractedInfo = this.parseReceiptText(text);
+            
+            // UI mit erkannten Daten füllen
             const today = new Date().toISOString().split('T')[0];
             
             extractedDataDiv.innerHTML = `
-                <h4>Bitte Daten manuell eingeben</h4>
-                <p class="info-text">Die automatische Texterkennung ist noch in Entwicklung. 
-                Bitte geben Sie die Daten vom Kassenbon manuell ein.</p>
+                <h4>Erkannte Daten</h4>
+                <div class="ocr-results">
+                    <p><strong>Verkäufer:</strong> ${extractedInfo.vendor || 'Nicht erkannt'}</p>
+                    <p><strong>Datum:</strong> ${extractedInfo.date || today}</p>
+                    <p><strong>Gesamtbetrag:</strong> €${extractedInfo.total || '0.00'}</p>
+                    ${extractedInfo.items.length > 0 ? 
+                        `<p><strong>Artikel:</strong> ${extractedInfo.items.length} erkannt</p>` : 
+                        '<p class="warning">⚠️ Keine Einzelpositionen erkannt</p>'
+                    }
+                </div>
+                
+                <div id="manual-items-entry">
+                    <h5>Einzelpositionen ${extractedInfo.items.length > 0 ? '(automatisch erkannt)' : '(manuell eingeben)'}:</h5>
+                    <div id="receipt-items-list"></div>
+                    <button type="button" class="add-item-btn" onclick="app.addReceiptItem()">
+                        + Position hinzufügen
+                    </button>
+                    <div class="receipt-total">
+                        <strong>Summe:</strong>
+                        <strong id="items-total">€${extractedInfo.total || '0.00'}</strong>
+                    </div>
+                </div>
+            `;
+            
+            // Erkannte Artikel hinzufügen
+            if (extractedInfo.items.length > 0) {
+                extractedInfo.items.forEach(item => {
+                    this.addReceiptItem(item.name, item.price);
+                });
+            } else {
+                // Mindestens eine leere Position
+                this.addReceiptItem();
+            }
+            
+            // Formular ausfüllen
+            document.getElementById('receipt-date').value = extractedInfo.date || today;
+            document.getElementById('receipt-vendor').value = extractedInfo.vendor || '';
+            document.getElementById('receipt-amount').value = extractedInfo.total || '';
+            
+            const receiptType = this.currentReceiptType === 'kassenbon' ? 'Kassenbon' : 'Rechnung';
+            document.getElementById('receipt-description').value = 
+                `${receiptType} ${extractedInfo.vendor ? 'von ' + extractedInfo.vendor : ''} vom ${new Date(extractedInfo.date || today).toLocaleDateString('de-DE')}`;
+            
+            document.getElementById('receipt-transaction-form').style.display = 'block';
+            
+        } catch (error) {
+            console.error('OCR Fehler:', error);
+            
+            // Fallback auf manuelle Eingabe
+            const today = new Date().toISOString().split('T')[0];
+            
+            extractedDataDiv.innerHTML = `
+                <h4>Automatische Erkennung fehlgeschlagen</h4>
+                <p class="error">Die Texterkennung konnte nicht durchgeführt werden. Bitte geben Sie die Daten manuell ein.</p>
                 
                 <div id="manual-items-entry">
                     <h5>Einzelpositionen:</h5>
@@ -565,44 +648,141 @@ class BookkeepingApp {
                     </div>
                 </div>
             `;
-
-            // Standard-Werte setzen
+            
+            this.addReceiptItem();
             document.getElementById('receipt-date').value = today;
-            document.getElementById('receipt-description').value = '';
-            document.getElementById('receipt-amount').value = '';
-            document.getElementById('receipt-category').value = '';
             document.getElementById('receipt-vendor').value = '';
+            document.getElementById('receipt-amount').value = '';
+            
+            const receiptType = this.currentReceiptType === 'kassenbon' ? 'Kassenbon' : 'Rechnung';
+            document.getElementById('receipt-description').value = `${receiptType} vom ${new Date().toLocaleDateString('de-DE')}`;
             
             document.getElementById('receipt-transaction-form').style.display = 'block';
-            
-            this.currentReceiptData = {
-                id: Date.now(),
-                imageData: imageData,
-                fileName: file.name,
-                items: [],
-                receiptType: this.currentReceiptType,
-                processed: false
-            };
-            
-            // Erste leere Position hinzufügen
-            this.addReceiptItem();
-        }, 1000);
+        }
     }
     
-    addReceiptItem() {
+    parseReceiptText(text) {
+        const result = {
+            vendor: null,
+            date: null,
+            total: null,
+            items: []
+        };
+        
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        
+        // Verkäufer erkennen (meist in den ersten Zeilen, oft in Großbuchstaben)
+        for (let i = 0; i < Math.min(5, lines.length); i++) {
+            const line = lines[i];
+            // Große Überschriften sind oft der Laden-Name
+            if (line.length > 3 && line.toUpperCase() === line) {
+                result.vendor = line;
+                break;
+            }
+            // Bekannte Ketten
+            if (/REWE|EDEKA|ALDI|LIDL|PENNY|NETTO|DM|ROSSMANN|KAUFLAND|REAL/i.test(line)) {
+                result.vendor = line;
+                break;
+            }
+        }
+        
+        // Datum erkennen
+        const datePatterns = [
+            /(\d{1,2})\.(\d{1,2})\.(\d{4})/,  // DD.MM.YYYY
+            /(\d{1,2})\.(\d{1,2})\.(\d{2})/,   // DD.MM.YY
+            /(\d{1,2})\/(\d{1,2})\/(\d{4})/,   // DD/MM/YYYY
+            /(\d{4})-(\d{2})-(\d{2})/          // YYYY-MM-DD
+        ];
+        
+        for (const line of lines) {
+            for (const pattern of datePatterns) {
+                const match = line.match(pattern);
+                if (match) {
+                    let day, month, year;
+                    if (pattern.source.includes('-')) {
+                        // YYYY-MM-DD format
+                        year = match[1];
+                        month = match[2];
+                        day = match[3];
+                    } else {
+                        day = match[1].padStart(2, '0');
+                        month = match[2].padStart(2, '0');
+                        year = match[3];
+                        if (year.length === 2) {
+                            year = '20' + year;
+                        }
+                    }
+                    result.date = `${year}-${month}-${day}`;
+                    break;
+                }
+            }
+            if (result.date) break;
+        }
+        
+        // Gesamtbetrag erkennen
+        const totalPatterns = [
+            /(?:SUMME|GESAMT|TOTAL|BETRAG|EUR|€)\s*[:\s]*(\d+[,.]?\d*)/i,
+            /(\d+[,.]?\d*)\s*(?:EUR|€)/i,
+            /^(\d+[,.]?\d*)$/  // Einzelne Zahl auf einer Zeile
+        ];
+        
+        // Von unten nach oben suchen (Summe steht meist unten)
+        for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i];
+            for (const pattern of totalPatterns) {
+                const match = line.match(pattern);
+                if (match) {
+                    const amount = match[1].replace(',', '.');
+                    const parsed = parseFloat(amount);
+                    if (parsed > 0 && parsed < 10000) { // Plausiblitätsprüfung
+                        result.total = parsed.toFixed(2);
+                        break;
+                    }
+                }
+            }
+            if (result.total) break;
+        }
+        
+        // Artikel und Preise erkennen
+        const itemPattern = /(.+?)\s+(\d+[,.]?\d*)\s*(?:EUR|€)?/;
+        const priceOnlyPattern = /^\s*(\d+[,.]?\d*)\s*(?:EUR|€)?$/;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Artikel mit Preis in einer Zeile
+            const match = line.match(itemPattern);
+            if (match && !match[1].match(/SUMME|GESAMT|TOTAL|BETRAG/i)) {
+                const name = match[1].trim();
+                const price = parseFloat(match[2].replace(',', '.'));
+                if (price > 0 && price < 1000) {
+                    result.items.push({ name, price: price.toFixed(2) });
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    addReceiptItem(name = '', price = '') {
         const itemsList = document.getElementById('receipt-items-list');
-        const itemId = Date.now();
+        const itemId = Date.now() + Math.random(); // Eindeutige ID
         
         const itemDiv = document.createElement('div');
         itemDiv.className = 'receipt-item-input';
         itemDiv.id = `item-${itemId}`;
         itemDiv.innerHTML = `
-            <input type="text" placeholder="Artikel" class="item-name" onchange="app.updateItemsTotal()">
-            <input type="number" placeholder="Preis" step="0.01" class="item-price" onchange="app.updateItemsTotal()">
+            <input type="text" placeholder="Artikel" class="item-name" value="${name}" onchange="app.updateItemsTotal()">
+            <input type="number" placeholder="Preis" step="0.01" class="item-price" value="${price}" onchange="app.updateItemsTotal()">
             <button type="button" class="remove-item-btn" onclick="app.removeReceiptItem(${itemId})">×</button>
         `;
         
         itemsList.appendChild(itemDiv);
+        
+        // Summe aktualisieren wenn Preis vorhanden
+        if (price) {
+            setTimeout(() => this.updateItemsTotal(), 100);
+        }
     }
     
     removeReceiptItem(itemId) {

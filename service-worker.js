@@ -1,4 +1,4 @@
-const CACHE_NAME = 'haushalts-app-v3';
+const CACHE_NAME = 'haushalts-app-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,7 +7,10 @@ const urlsToCache = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  'https://cdn.jsdelivr.net/npm/chart.js'
+  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://unpkg.com/tesseract.js@5.0.4/dist/tesseract.min.js',
+  'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0/tesseract-core.wasm.js',
+  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js'
 ];
 
 // Install event - cache resources
