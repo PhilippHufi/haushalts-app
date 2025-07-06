@@ -212,6 +212,11 @@ class BookkeepingApp {
             this.showNotification('⚠️ Soll- und Haben-Konto müssen unterschiedlich sein!', 'error');
             return;
         }
+        
+        if (amount <= 0 || isNaN(amount)) {
+            this.showNotification('⚠️ Bitte geben Sie einen gültigen Betrag größer als 0 ein!', 'error');
+            return;
+        }
 
         // Prüfen ob wir im Bearbeitungsmodus sind
         if (this.editingTransactionId) {
@@ -803,12 +808,7 @@ class BookkeepingApp {
         // Bearbeitungsmodus aktivieren
         this.editingTransactionId = transactionId;
         
-        // Form Submit Handler temporär ändern
-        const form = document.getElementById('transaction-form');
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            this.updateTransaction();
-        };
+        // Form Submit Handler speichern aber nicht ändern - addTransaction prüft editingTransactionId
         
         this.showNotification('📝 Transaktion wird bearbeitet', 'info');
     }
@@ -840,12 +840,7 @@ class BookkeepingApp {
         const submitButton = document.querySelector('#transaction-form button[type="submit"]');
         submitButton.textContent = 'Transaktion hinzufügen';
         
-        // Form Submit Handler zurücksetzen
-        const form = document.getElementById('transaction-form');
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            this.addTransaction();
-        };
+        // Bearbeitungsmodus beenden
         
         delete this.editingTransactionId;
         
@@ -985,7 +980,14 @@ function showTab(tabName) {
     });
     
     document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
+    
+    // Finde den richtigen Tab-Button und markiere ihn als aktiv
+    document.querySelectorAll('.tab-button').forEach(button => {
+        if (button.textContent.toLowerCase().includes(tabName.toLowerCase()) || 
+            button.getAttribute('onclick').includes(tabName)) {
+            button.classList.add('active');
+        }
+    });
     
     // Update views when tabs are shown
     if (window.bookkeepingApp) {
