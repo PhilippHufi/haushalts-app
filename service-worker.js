@@ -1,12 +1,13 @@
-const CACHE_NAME = 'buchhaltung-app-v1';
+const CACHE_NAME = 'haushalts-app-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/script.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  './',
+  './index.html',
+  './styles.css',
+  './script.js',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
 // Install event - cache resources
